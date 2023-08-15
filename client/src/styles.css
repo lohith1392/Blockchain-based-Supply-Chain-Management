@@ -1,0 +1,9 @@
+.fixed-footer {
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+  background-color: #0071CE; /* Or any other color */
+  color: #fff; /* Text color */
+  padding: 10px 0;
+  text-align: center;
+}
