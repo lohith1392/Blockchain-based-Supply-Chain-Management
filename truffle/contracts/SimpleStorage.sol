@@ -2,29 +2,76 @@
 pragma solidity >=0.4.22 <0.9.0;
 
 contract ManufacturingTraceability {
-  address[] public managers;  // List of approved managers
 
-    constructor() {
-        managers = [0xb19C943a68466347A66bFa98D4eEEb4F334969a8];  // Replace with actual Ethereum addresses
-    }
+    mapping(address => string) public user_type;
+    mapping(address=>bool) public user_exists;
+
     // Enum for Product state
-    enum ProductState {
-        Processing,
+    enum MedProductState {
+        Producing,
+        Produced,
+        AddToContainer,
+        RetailerProcessing,
         InTransit,
         Delivered
     }
-    
+
     // Product Structure
-    struct Product {
+
+    struct MedProduct {
         string name;
-        address owner;
+        address producer;
+        address retailer;
+        address enduser;
         string shippingAddress;
         string description;
-        bytes32 hubHash;  // current hub where the product is located
-        ProductState state;
-        bytes32[] hubHistory;  // History of hubs the product visited
+        bytes32 hubHash; // current hub where the product is located
+        MedProductState state;
+        bytes32[] hubHistory;
+        uint quantity;
+        uint sno;
+        uint price;
     }
-    
+
+
+    struct RetailerProduct{
+        string name;
+        address producer;
+        address retailer;
+        address enduser;
+        string shippingAddress;
+        string description;// current hub where the product is located
+        MedProductState state;
+        uint quantity;
+        uint price;
+        bytes32 containerHash;
+    }
+    struct UserProduct{
+        string name;
+        address producer;
+        address retailer;
+        address enduser;
+        string shippingAddress;
+        string description;// current hub where the product is located
+        MedProductState state;
+        uint sno;
+        uint price;
+        bytes32 packageHash;
+    }
+
+    struct UserCart{
+        string name;
+        address producer;
+        address retailer;
+        address enduser;
+        string shippingAddress;
+        string description;// current hub where the product is located
+        MedProductState state;
+        uint quantity;
+        uint price;
+
+    }
+
     // Hub Structure
     struct Hub {
         string location;
@@ -32,141 +79,336 @@ contract ManufacturingTraceability {
         uint256 capacity;
         string contactDetails;
     }
-    function isManager(address _address) public view returns(bool) {
-        for(uint i = 0; i < managers.length; i++) {
-            if(managers[i] == _address) return true;
+
+
+    function isRegistered(address _address) public view returns (string memory) {
+        if (user_exists[_address]==true){
+            return user_type[_address];
         }
-        return false;
+        return "Not Found" ;
     }
 
     // Mapping to hold products and hubs
-    mapping(address => bytes32[]) public customerToProducts;
-    mapping(address => bytes32[]) public managerToHubs;
-    mapping(bytes32 => Product) public products;
-    mapping(bytes32 => Hub) public hubs;
+    mapping(address => bytes32[]) public producerToProducts;
+    mapping(bytes32 => MedProduct) public medproducts;
+
+    mapping(address=>bytes32[]) public producerOrders;
+    mapping(address=>bytes32[]) public retailerOrders;
+    mapping(bytes32 => RetailerProduct) public retailerProducts;
+    mapping(bytes32 => address[]) public prodToRetailers;
+    mapping(bytes32=>bytes32[]) public containers;
+
+    bytes32[] public allproducts;
+
 
     // Events
-    event ProductCreated(bytes32 productHash);
-    event HubCreated(bytes32 hubHash);
-    event ProductAssignedToHub(bytes32 productHash, bytes32 hubHash);
-    event ProductRemovedFromHub(bytes32 productHash, bytes32 oldHubHash);
+    event MedProductCreated(bytes32 medproductHash);
+    event ProductProduced(bytes32 productHash);
+    event UserRegistered(address acchash);
     event ProductDelivered(bytes32 productHash);
+    event OrderPlaces(bytes32 productHash);
+    event OrderSent(bytes32 productHash);
 
-    function createProduct(
+    function calculateMerkleRoot(bytes32[] memory hashes) internal pure returns (bytes32) {
+        uint length = hashes.length;
+        require(length > 0, "Empty hash list");
+
+        if (length == 1) {
+            return hashes[0];
+        }
+
+        bytes32[] memory tempHashes = hashes;
+        
+        // Calculate the Merkle root iteratively
+        while (length > 1) {
+            uint newLength = (length + 1) / 2;
+            for (uint i = 0; i < newLength; i++) {
+                uint j = 2 * i;
+                if (j < length - 1) {
+                    tempHashes[i] = keccak256(abi.encodePacked(tempHashes[j], tempHashes[j + 1]));
+                } else {
+                    tempHashes[i] = keccak256(abi.encodePacked(tempHashes[j]));
+                }
+            }
+            length = newLength;
+        }
+
+        return tempHashes[0];
+    }
+
+    function registerUser(address account,string memory u_type) external {
+        user_type[account]=u_type;
+        user_exists[account]=true;
+        emit UserRegistered(account);
+    }
+    function createMedProduct(
         string memory _name,
         address _owner,
-        string memory _shippingAddress,
-        string memory _description
+        string memory _description,
+        uint _quantity,
+        uint _price
     ) external {
-        bytes32 productHash = keccak256(abi.encodePacked(_name, _owner, _shippingAddress, _description, block.timestamp));
-        products[productHash] = Product({
+        bytes32 productHash = keccak256(
+            abi.encodePacked(
+                _name,
+                _owner,
+                _description,
+                _quantity,
+                _price,
+                block.timestamp
+            )
+        );
+        medproducts[productHash] = MedProduct({
             name: _name,
-            owner: _owner,
-            shippingAddress: _shippingAddress,
-            description: _description,
+            producer: _owner,
+            retailer: 0x0000000000000000000000000000000000000000,
+            enduser: 0x0000000000000000000000000000000000000000,
+            shippingAddress:"",
+            description:_description,
             hubHash: 0,
-            state: ProductState.Processing,
-            hubHistory: new bytes32[](0)
+            state: MedProductState.Producing,
+            hubHistory: new bytes32[](0),
+            quantity:_quantity,
+            sno:0,
+            price:_price
         });
-        customerToProducts[_owner].push(productHash);
-        emit ProductCreated(productHash);
+        allproducts.push(productHash);
+        producerToProducts[_owner].push(productHash);
+        emit MedProductCreated(productHash);
     }
-    function getProductsByCustomer(address _customer) external view returns(bytes32[] memory) {
-    return customerToProducts[_customer];
-}
 
-    function getProductAndHubDetails(bytes32 _productHash) external view returns(
-    string memory productName,
-    address productOwner,
-    string memory productShippingAddress,
-    string memory productDescription,
-    ProductState productStatus,
-    string[] memory hubLocations
-) {
-    Product storage product = products[_productHash];
-    
-    // Get product details
-    productName = product.name;
-    productOwner = product.owner;
-    productShippingAddress = product.shippingAddress;
-    productDescription = product.description;
-    productStatus = product.state;
+    function getProductsByProducer(
+        address _producer
+    ) external view returns (bytes32[] memory) {
+        return producerToProducts[_producer];
+    }
 
-    // Determine how many valid hub locations are there
-    uint validHubCount = 0;
-    for(uint i = 0; i < product.hubHistory.length; i++) {
-        Hub storage hub = hubs[product.hubHistory[i]];
-        if (bytes(hub.location).length != 0) { // Check if location is non-empty
-            validHubCount++;
+    function ProduceProduct(bytes32 _producthash) external {
+        medproducts[_producthash].state=MedProductState.Produced;
+        emit ProductProduced(_producthash);
+    }
+    function getProductByHash(bytes32 _producthash) external view returns(MedProduct memory) {
+        return medproducts[_producthash];
+    }
+    function viewProductsAvailable() external returns(bytes32[] memory){
+        return allproducts;
+
+    }
+
+    function placeOrder(bytes32 _prodHash,address _retaileraddress,uint _units)external {
+        bytes32 retproductHash = keccak256(
+            abi.encodePacked(
+                medproducts[_prodHash].name,
+                medproducts[_prodHash].producer,
+                medproducts[_prodHash].description,
+                _units,
+                medproducts[_prodHash].price,
+                block.timestamp
+            )
+        );
+        medproducts[_prodHash].sno=medproducts[_prodHash].sno+_units;
+        retailerProducts[retproductHash] = RetailerProduct({
+            name: medproducts[_prodHash].name,
+            producer: medproducts[_prodHash].producer,
+            retailer: _retaileraddress,
+            enduser: 0x0000000000000000000000000000000000000000,
+            shippingAddress:"",
+            description:medproducts[_prodHash].description,
+            state: MedProductState.Produced,
+            quantity:_units,
+            price:medproducts[_prodHash].price,
+            containerHash:bytes32(0)
+        }); 
+        retailerOrders[_retaileraddress].push(retproductHash);
+        producerOrders[medproducts[_prodHash].producer].push(retproductHash);
+        prodToRetailers[_prodHash].push(_retaileraddress);
+        emit OrderPlaces(retproductHash);
+  
+
+
+   
+    }
+    function getRetailerOrders(address _retaileraddress) external returns (bytes32[] memory) {
+        return retailerOrders[_retaileraddress];
+    }
+    function getRetailerOrdersByHash(bytes32 _retailerproducthash) external view returns(RetailerProduct memory) {
+        return retailerProducts[_retailerproducthash];
+    }
+    function getOrdersByProducer(address _produceraddress) external view returns(bytes32[] memory) {
+        return producerOrders[_produceraddress];
+    }
+
+    function sendorder(bytes32 _retailerproducthash) external {
+        retailerProducts[_retailerproducthash].state=MedProductState.AddToContainer;
+        uint _units=retailerProducts[_retailerproducthash].quantity;
+        bytes32[] memory packageHashes=new bytes32[](_units);
+        for(uint i=0;i<retailerProducts[_retailerproducthash].quantity;i++){
+            bytes32 packageHash = keccak256(
+                abi.encodePacked(
+                    retailerProducts[_retailerproducthash].name,
+                    retailerProducts[_retailerproducthash].producer,
+                    retailerProducts[_retailerproducthash].description,
+                    retailerProducts[_retailerproducthash].price,
+                    i,
+                    block.timestamp
+                )
+            );
+            packageHashes[i]=packageHash;
         }
-    }
-
-    hubLocations = new string[](validHubCount);
-    uint counter = 0;
-    for(uint i = 0; i < product.hubHistory.length; i++) {
-        Hub storage hub = hubs[product.hubHistory[i]];
-        if (bytes(hub.location).length != 0) { // Check if location is non-empty
-            hubLocations[counter] = hub.location;
-            counter++;
-        }
-    }
-}
-
-    function createHub(
-        string memory _location,
-        address _manager,
-        uint256 _capacity,
-        string memory _contactDetails
-    ) external {
-        bytes32 hubHash = keccak256(abi.encodePacked(_location, _manager, _capacity, _contactDetails, block.timestamp));
-        require(msg.sender == _manager, "Only the declared manager can create the hub.");
-        hubs[hubHash] = Hub({
-            location: _location,
-            manager: _manager,
-            capacity: _capacity,
-            contactDetails: _contactDetails
-        });
-        managerToHubs[_manager].push(hubHash);
-        emit HubCreated(hubHash);
-    }
-
-    function assignProductToHub(bytes32 _productHash, bytes32 _hubHash) external {
-        Product storage product = products[_productHash];
-        Hub storage hub = hubs[_hubHash];
         
-        require(product.hubHash == 0, "Product is already assigned to a hub.");
-        require(hub.manager == msg.sender, "Only the hub manager can add products.");
+        // packageHases will be sent to convert into mrkle root and stored in cantainers
+        bytes32 merkleRoot = calculateMerkleRoot(packageHashes);
+        containers[merkleRoot]=packageHashes;
+
+        retailerProducts[_retailerproducthash].containerHash=merkleRoot;
         
-        product.hubHash = _hubHash;
-        product.state = ProductState.InTransit;
-        product.hubHistory.push(_hubHash);
-        emit ProductAssignedToHub(_productHash, _hubHash);
+        emit OrderSent(_retailerproducthash);
     }
 
-    function removeProductFromHub(bytes32 _productHash) external {
-        Product storage product = products[_productHash];
-        Hub storage hub = hubs[product.hubHash];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    function sendOrder(bytes32 _retailerproducthash) external {
+        retailerProducts[_retailerproducthash].state=MedProductState.AddToContainer;
+        bytes32 packageHash = keccak256(
+                abi.encodePacked(
+                    retailerProducts[_retailerproducthash].name,
+                    retailerProducts[_retailerproducthash].producer,
+                    retailerProducts[_retailerproducthash].description,
+                    retailerProducts[_retailerproducthash].price,
+                    block.timestamp
+                )
+            );
+        // packageHases will be sent to convert into mrkle root and stored in cantainers
+        bytes32 merkleRoot = keccak256(abi.encodePacked(packageHash));
+        containers[merkleRoot]=[packageHash];
         
-        require(hub.manager == msg.sender, "Only the hub manager can remove products.");
+        retailerProducts[_retailerproducthash].containerHash=merkleRoot;
         
-        emit ProductRemovedFromHub(_productHash, product.hubHash);
-        product.hubHash = 0;
+        emit OrderSent(_retailerproducthash);
     }
-
-    function markProductAsDelivered(bytes32 _productHash) external {
-        Product storage product = products[_productHash];
-        require(product.owner == msg.sender, "Only the product owner can mark it as delivered.");
-
-        product.state = ProductState.Delivered;
-        emit ProductDelivered(_productHash);
-    }
-
-    function getHubHistory(bytes32 _productHash) external view returns(bytes32[] memory) {
-        return products[_productHash].hubHistory;
-    }
-
-    function getHubsByManager(address _manager) external view returns(bytes32[] memory) {
-        return managerToHubs[_manager];
-    }
-
 }
