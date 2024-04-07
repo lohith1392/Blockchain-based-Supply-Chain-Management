@@ -31,6 +31,7 @@ contract ManufacturingTraceability {
         uint quantity;
         uint sno;
         uint price;
+        bytes32[] retailerhashes;
     }
 
 
@@ -57,6 +58,7 @@ contract ManufacturingTraceability {
         uint sno;
         uint price;
         bytes32 packageHash;
+        bytes32 containerHash;
     }
 
     struct UserCart{
@@ -81,6 +83,7 @@ contract ManufacturingTraceability {
     }
 
 
+
     function isRegistered(address _address) public view returns (string memory) {
         if (user_exists[_address]==true){
             return user_type[_address];
@@ -94,9 +97,13 @@ contract ManufacturingTraceability {
 
     mapping(address=>bytes32[]) public producerOrders;
     mapping(address=>bytes32[]) public retailerOrders;
-    mapping(bytes32 => RetailerProduct) public retailerProducts;
-    mapping(bytes32 => address[]) public prodToRetailers;
+    mapping(bytes32 =>RetailerProduct) public retailerProducts;
+    mapping(bytes32 =>mapping( address=> RetailerProduct) ) public retailerProductNew;
+    mapping(bytes32 => bytes32[]) public prodToRetailers;
     mapping(bytes32=>bytes32[]) public containers;
+
+    mapping(address => bytes32[]) public userProducts;
+    mapping(bytes32 => UserProduct) public userProductCart;
 
     bytes32[] public allproducts;
 
@@ -106,7 +113,9 @@ contract ManufacturingTraceability {
     event ProductProduced(bytes32 productHash);
     event UserRegistered(address acchash);
     event ProductDelivered(bytes32 productHash);
+    event ProductBought(bytes32 productHash);
     event OrderPlaces(bytes32 productHash);
+    event OrderListed(bytes32 productHash);
     event OrderSent(bytes32 productHash);
 
     function calculateMerkleRoot(bytes32[] memory hashes) internal pure returns (bytes32) {
@@ -170,7 +179,8 @@ contract ManufacturingTraceability {
             hubHistory: new bytes32[](0),
             quantity:_quantity,
             sno:0,
-            price:_price
+            price:_price,
+            retailerhashes:new bytes32[](0)
         });
         allproducts.push(productHash);
         producerToProducts[_owner].push(productHash);
@@ -190,7 +200,7 @@ contract ManufacturingTraceability {
     function getProductByHash(bytes32 _producthash) external view returns(MedProduct memory) {
         return medproducts[_producthash];
     }
-    function viewProductsAvailable() external returns(bytes32[] memory){
+    function viewProductsAvailable() external view returns(bytes32[] memory){
         return allproducts;
 
     }
@@ -207,6 +217,7 @@ contract ManufacturingTraceability {
             )
         );
         medproducts[_prodHash].sno=medproducts[_prodHash].sno+_units;
+        medproducts[_prodHash].retailerhashes.push(retproductHash);
         retailerProducts[retproductHash] = RetailerProduct({
             name: medproducts[_prodHash].name,
             producer: medproducts[_prodHash].producer,
@@ -216,19 +227,19 @@ contract ManufacturingTraceability {
             description:medproducts[_prodHash].description,
             state: MedProductState.Produced,
             quantity:_units,
-            price:medproducts[_prodHash].price,
+            price:medproducts[_prodHash].price/medproducts[_prodHash].quantity,
             containerHash:bytes32(0)
         }); 
         retailerOrders[_retaileraddress].push(retproductHash);
         producerOrders[medproducts[_prodHash].producer].push(retproductHash);
-        prodToRetailers[_prodHash].push(_retaileraddress);
+        prodToRetailers[_prodHash].push(retproductHash);
         emit OrderPlaces(retproductHash);
   
 
 
    
     }
-    function getRetailerOrders(address _retaileraddress) external returns (bytes32[] memory) {
+    function getRetailerOrders(address _retaileraddress) external view returns (bytes32[] memory) {
         return retailerOrders[_retaileraddress];
     }
     function getRetailerOrdersByHash(bytes32 _retailerproducthash) external view returns(RetailerProduct memory) {
@@ -264,6 +275,81 @@ contract ManufacturingTraceability {
         
         emit OrderSent(_retailerproducthash);
     }
+    function listOrder(bytes32 _prodHash,uint price)external {
+        
+        retailerProducts[_prodHash].price=price;
+        emit OrderListed(_prodHash);
+   
+    }
+
+    function recieveOrder(bytes32 _retailerproducthash) external {
+        retailerProducts[_retailerproducthash].state=MedProductState.RetailerProcessing;
+    }
+
+    function getAllRetailers(bytes32 _producthash) external view returns(RetailerProduct[] memory){
+        bytes32[] memory retailerHashes=prodToRetailers[_producthash];
+        RetailerProduct[] memory retailers=new RetailerProduct[](retailerHashes.length);
+        for(uint i=0;i<retailerHashes.length;i++){
+            retailers[i]=retailerProducts[retailerHashes[i]];
+        }
+        return retailers;
+    }
+
+    function buyProduct(bytes32 _retailerproducthash,address _enduser,string memory _shippingAddress,uint _units) external {
+        // retailerProducts[_retailerproducthash].state=MedProductState.InTransit;
+        retailerProducts[_retailerproducthash].enduser=_enduser;
+        retailerProducts[_retailerproducthash].shippingAddress=_shippingAddress;
+        retailerProducts[_retailerproducthash].quantity=retailerProducts[_retailerproducthash].quantity-_units;
+        bytes32 packagehash = keccak256(
+                abi.encodePacked(
+                    retailerProducts[_retailerproducthash].name,
+                    retailerProducts[_retailerproducthash].producer,
+                    retailerProducts[_retailerproducthash].description,
+                    retailerProducts[_retailerproducthash].price,
+                    _units,
+                    _shippingAddress,
+                    _enduser,
+                    block.timestamp
+                )
+            );
+
+        userProductCart[packagehash]=UserProduct({
+            name:retailerProducts[_retailerproducthash].name,
+            producer:retailerProducts[_retailerproducthash].producer,
+            retailer:retailerProducts[_retailerproducthash].retailer,
+            enduser:_enduser,
+            shippingAddress:_shippingAddress,
+            description:retailerProducts[_retailerproducthash].description,
+            state:MedProductState.RetailerProcessing,
+            sno:_units,
+            price:retailerProducts[_retailerproducthash].price,
+            packageHash:packagehash,
+            containerHash:retailerProducts[_retailerproducthash].containerHash
+        });
+        userProducts[_enduser].push(packagehash);
+        emit ProductBought(_retailerproducthash);
+    }
+    function retailerShipProduct(bytes32 _retailerproducthash,bytes32 _producthash) external {
+        retailerProducts[_retailerproducthash].state=MedProductState.InTransit;
+        userProductCart[_producthash].state=MedProductState.InTransit;
+    }
+
+    function retailerDeliverProduct(bytes32 _retailerproducthash,bytes32 _packagehash) external {
+        retailerProducts[_retailerproducthash].state=MedProductState.Delivered;
+        userProductCart[_packagehash].state=MedProductState.Delivered;
+        emit ProductDelivered(_retailerproducthash);
+    }
+
+    function getUserProducts(address _enduser) external view returns(bytes32[] memory){
+        return userProducts[_enduser];
+    }
+
+    function getUserProductByHash(bytes32 _packagehash) external view returns(UserProduct memory){
+        return userProductCart[_packagehash];
+    }
+
+
+
 
 
 

@@ -23,21 +23,27 @@ function Home() {
   const [viewProducerOrder, setViewProducerOrders] = useState(null);
   const [curIndex, setCurIndex] = useState(null);
   const [viewPlaceOrder, setViewPlaceOrder] = useState(null);
+  const [viewListOrder, setViewListOrder] = useState(null);
   const [productName, setProductName] = useState('');
 
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
   const [quantitySet, setQuantitySet] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
   const [pricePlaceholder, setPricePlaceholder] = useState('');
 
   const [barcodeImage, setBarcodeImage] = useState(null);
 
   const [productHash, setProductHash] = useState('');
   const [productDetails, setProductDetails] = useState(null);
+  const [packageDetails, setPackageDetails] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
+  const [orderRetailer, setOrderRetailer] = useState(null);
+  const [orderRetailers, setOrderRetailers] = useState([]);
 
   const [productNames, setProductNames] = useState([]);
+  const [packageNames, setPackageNames] = useState([]);
   const [orderNames, setOrderNames] = useState([]);
   const [products, setProducts] = useState([]);
 
@@ -67,6 +73,33 @@ function Home() {
         : ''
     );
   };
+  const newhandleUserOrderQuantityChange = (event) => {
+    var value = event.target.value;
+    console.log(value);
+    console.log(orderRetailer[0].quantity);
+    if (isNaN(value)) {
+      value = '';
+    } else if (parseInt(value) > orderRetailer[0].quantity) {
+      value = orderRetailer[0].quantity;
+    } else if (value < 0) {
+      value = 0;
+    }
+    setQuantitySet(value);
+    setPricePlaceholder(value * orderRetailer[0].price);
+  };
+  const newhandlePriceChange = (event) => {
+    var value = event.target.value;
+
+    setQuantitySet(value);
+  };
+
+  const handleshippingchange = (event) => {
+    console.log()
+    var value = event.target.value;
+    console.log(value)
+
+    setShippingAddress(value);
+  }
 
   async function loginUser() {
     if (accounts.length === 0) return;
@@ -206,6 +239,32 @@ function Home() {
     }
   };
 
+  const checkPackagetStatusDirect = async (hash, index) => {
+    console.log(hash);
+    try {
+      const product = await contract.methods.getProductByHash(hash).call();
+      console.log('THis is Product:');
+      console.log(product);
+      const prodDetails = [hash, product];
+
+      setPackageDetails(prodDetails);
+      console.log(prodDetails);
+      var retprods = [];
+      for (var key in product.retailerhashes) {
+        const retailerProduct = await contract.methods
+          .getRetailerOrdersByHash(product.retailerhashes[key])
+          .call();
+        console.log(retailerProduct);
+        retprods.push([retailerProduct, product.retailerhashes[key]]);
+      }
+      console.log('Retprods');
+      console.log(retprods);
+      setOrderRetailers(retprods);
+    } catch (error) {
+      console.error('Error fetching product:', error);
+    }
+  };
+
   const checkRetailerOrderStatusDirect = async (hash, index) => {
     console.log(hash);
     try {
@@ -277,6 +336,12 @@ function Home() {
   const openModal = () => {
     setViewPlaceOrder(true);
   };
+  const openModal2 = () => {
+    setViewListOrder(true);
+  };
+  const closeModal2 = () => {
+    setViewListOrder(false);
+  };
 
   const closeModal = () => {
     setViewPlaceOrder(false);
@@ -295,6 +360,19 @@ function Home() {
 
     setIsEthSent(true);
   };
+  const payFromUser = async () => {
+    console.log('Paying from user');
+    const price = pricePlaceholder * 0.0000035;
+    const priceInWei = web3.utils.toWei(price.toString(), 'ether');
+    const receipt = await web3.eth.sendTransaction({
+      from: accounts[0],
+      to: orderRetailer[0].retailer,
+      value: priceInWei,
+    });
+    console.log('Transaction receipt:', receipt);
+
+    setIsEthSent(true);
+  };
   const PlaceOrder = async () => {
     try {
       const productHashes = await contract.methods
@@ -307,8 +385,48 @@ function Home() {
       console.error('Error fetching products:', error);
     }
   };
+  const buyProduct = async () => {
+    try {
+      const productHashes = await contract.methods
+        .buyProduct(orderRetailer[1], accounts[0],shippingAddress, quantitySet)
+        .send({ from: accounts[0] });
+
+      // getAllOrdersRetailer();
+      setViewOrderProducts(false);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+  const listOrder = async () => {
+    try {
+      const productHashes = await contract.methods
+        .listOrder(orderDetails[0], quantitySet)
+        .send({ from: accounts[0] });
+
+      getAllOrdersRetailer();
+      setViewOrderProducts(false);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
 
   const getAllOrdersRetailer = async () => {
+    const retailerProductHashes = await contract.methods
+      .getRetailerOrders(accounts[0])
+      .call();
+    var retailerproducts = [];
+    console.log(retailerProductHashes);
+    for (var key in retailerProductHashes) {
+      const retailerProduct = await contract.methods
+        .getRetailerOrdersByHash(retailerProductHashes[key])
+        .call();
+
+      retailerproducts.push([retailerProduct, retailerProductHashes[key]]);
+    }
+    console.log(retailerproducts);
+    setOrderNames(retailerproducts);
+  };
+  const getAllOrdersUser = async () => {
     const retailerProductHashes = await contract.methods
       .getRetailerOrders(accounts[0])
       .call();
@@ -340,6 +458,24 @@ function Home() {
     }
     console.log(retailerproducts);
     setOrderNames(retailerproducts);
+  };
+
+  const recieveProduct = async (hash) => {
+    try {
+      const productHashes = await contract.methods
+        .recieveOrder(hash)
+        .send({ from: accounts[0] });
+
+      const product = await contract.methods.getProductByHash(hash).call();
+      console.log('THis is Product:');
+      console.log(product);
+      const prodDetails = [hash, product];
+      console.log('This is new product details: ');
+      console.log(prodDetails);
+      setOrderDetails(prodDetails);
+    } catch (error) {
+      console.error('Error Sending product:', error);
+    }
   };
 
   const getOrderProducts = async () => {
@@ -381,6 +517,43 @@ function Home() {
     }
   };
 
+  const getPackageProducts = async () => {
+    try {
+      const productHashes = await contract.methods
+        .viewProductsAvailable()
+        .call();
+
+      console.log('These are product hashes ');
+      console.log(productHashes);
+      const productDetailsPromises = productHashes.map((hash) =>
+        contract.methods.medproducts(hash).call()
+      );
+
+      const allProducts = await Promise.all(productDetailsPromises);
+      console.log(allProducts);
+      const productsArray = allProducts.map((product, index) => {
+        console.log(product);
+        return [productHashes[index], product];
+      });
+
+      console.log('Product array ');
+      console.log(productsArray);
+      setProducts(productsArray);
+      // Create an array of objects with name and hash values
+      const productsWithHashes = productsArray.map((prod, index) => ({
+        name: prod[1].name,
+        hash: prod[0],
+      }));
+      setProductDetails(null);
+
+      console.log(productsWithHashes);
+
+      setPackageNames(productsWithHashes);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
   const trackProducts = async () => {
     getAllProducts();
   };
@@ -397,7 +570,7 @@ function Home() {
       const prodDetails = [hash, product];
       console.log('This is new product details: ');
       console.log(prodDetails);
-      setProductDetails(prodDetails);
+      setOrderDetails(prodDetails);
     } catch (error) {
       console.error('Error Sending product:', error);
     }
@@ -468,7 +641,223 @@ function Home() {
 
         {isUserRegistered === true && (
           <div>
-            {isUserUser === true && <div></div>}
+            {isUserUser === true && (
+              <div>
+                <button
+                  className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
+                  onClick={() => {
+                    setViewOrderProducts(true);
+                    setViewContainers(false);
+                    getPackageProducts();
+                  }}
+                >
+                  All Products
+                </button>
+
+                <button
+                  className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
+                  onClick={() => {
+                    setViewOrderProducts(false);
+                    getAllOrdersUser();
+                  }}
+                >
+                  View Orders
+                </button>
+                <br></br>
+                <br></br>
+                {viewOrderProducts === true && (
+                  <div id='anotherDiv' className='border mt-4 p-4'>
+                    <div className='input-group flex items-center w-full sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-1/3 mb-4 space-x-4'>
+                      <div className='input-group flex flex-col space-y-2 items-start'></div>
+                    </div>
+                    <h1>All Products</h1>
+                    <hr />
+                    <div>
+                      {packageNames.map((product, index) => (
+                        <button
+                          key={index}
+                          id={product.name}
+                          onClick={() =>
+                            checkPackagetStatusDirect(product.hash, index)
+                          }
+                          className='w-full bg-violet-500 hover:bg-violet-600 active:bg-violet-700 focus:outline-none focus:ring focus:ring-violet-300 p-2 rounded mt-6'
+                        >
+                          {product.name}
+                        </button>
+                      ))}
+                    </div>
+                    <br></br>
+
+                    {/* {product && (
+                  <div className='mt-4'>
+                    <p>Name: {product.name}</p>
+                    <p>Owner: {product.owner}</p>
+                    <p>Shipping Address: {product.shippingAddress}</p>
+                    <p>Description: {product.description}</p>
+                    <p>
+                      Product Status:{' '}
+                      {product.state === '0'
+                        ? 'In Process'
+                        : product.state === '1'
+                        ? 'On the Way'
+                        : product.state === '2'
+                        ? 'Delivered'
+                        : 'Unknown'}
+                    </p>
+                  </div>
+                )} */}
+
+                    {packageDetails && (
+                      <div className='mt-4'>
+                        <p>Name: {packageDetails[1].name}</p>
+                        <p>Producer: {packageDetails[1].producer}</p>
+                        {packageDetails[1].retailer !==
+                          '0x0000000000000000000000000000000000000000' && (
+                          <p>Retailer:{packageDetails[1].retailer}</p>
+                        )}
+
+                        <p>Description: {packageDetails[1].description}</p>
+                        <p>
+                          {orderRetailers.map((product, index) => (
+                            <button
+                              key={index}
+                              id={product[0].name}
+                              onClick={() =>
+                                // checkPackagetStatusDirect(product[0].hash, index)
+                                {
+                                  setViewPlaceOrder(true);
+                                  setOrderRetailer(product);
+                                }
+                              }
+                              className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mt-6'
+                            >
+                              Retailer: {product[0].retailer}
+                              <br></br> Price:₹ {product[0].price} per unit/-{' '}
+                              <br></br> Quantity: {product[0].quantity} units
+                              remaining
+                            </button>
+                          ))}
+                          {viewPlaceOrder === true && (
+                            <div className='fixed inset-0 flex items-center justify-center'>
+                              <div className='modal-overlay fixed inset-0 bg-gray-900 opacity-50'></div>
+
+                              <div className='modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto'>
+                                <div className='modal-content py-4 text-left px-6'>
+                                  <div className='flex justify-between items-center pb-3'>
+                                    <p className='text-2xl font-bold'>
+                                      Order Form
+                                    </p>
+                                    <button
+                                      onClick={closeModal}
+                                      className='modal-close cursor-pointer z-50'
+                                    >
+                                      <svg
+                                        className='fill-current text-black'
+                                        xmlns='http://www.w3.org/2000/svg'
+                                        width='18'
+                                        height='18'
+                                        viewBox='0 0 18 18'
+                                      >
+                                        <path d='M16.22 15.78a2 2 0 0 1-2.82 0L9 11.83l-4.4 4.4a2 2 0 0 1-2.82-2.82l4.4-4.4-4.4-4.4a2 2 0 1 1 2.82-2.82l4.4 4.4 4.4-4.4a2 2 0 1 1 2.82 2.82l-4.4 4.4 4.4 4.4a2 2 0 0 1 0 2.82z' />
+                                      </svg>
+                                    </button>
+                                  </div>
+
+                                  <form className='mb-6'>
+                                    <div className='mb-4'>
+                                      <label
+                                        className='block text-gray-700 text-sm font-bold mb-2'
+                                        htmlFor='name'
+                                      >
+                                        Enter Quantity
+                                      </label>
+                                      <input
+                                        className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
+                                        id='quantity'
+                                        type='number'
+                                        placeholder='Enter the Quantity'
+                                        value={quantitySet}
+                                        onChange={
+                                          newhandleUserOrderQuantityChange
+                                        }
+                                        max={orderRetailer[0].quantity}
+                                        min={0}
+                                      />
+                                    </div>
+                                    <div className='input-group flex items-center w-full sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-1/3 mb-4 space-x-4'>
+                                      <label className='block'>
+                                        Total Price: {pricePlaceholder}
+                                      </label>
+                                    </div>
+
+                                    {isethSent === false && (
+                                      <div className='flex items-center justify-end'>
+                                        <button
+                                          className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline'
+                                          type='button'
+                                          onClick={payFromUser}
+                                        >
+                                          Send Eth
+                                        </button>
+                                      </div>
+                                    )}
+                                    {isethSent === true && (
+                                      <div>
+                                      <div className='mb-4'>
+                                          <label
+                                            className='block text-gray-700 text-sm font-bold mb-2'
+                                            htmlFor='name'
+                                          >
+                                            Shipping Address
+                                          </label>
+                                          <input
+                                            className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
+                                            id='quantity'
+                                            type='text'
+                                            placeholder='Enter the Shipping Address'
+                                            value={shippingAddress}
+                                            onChange={
+                                              handleshippingchange
+                                            }
+                                            max={orderRetailer[0].quantity}
+                                            min={0}
+                                          />
+                                        </div>
+                                      <div className='flex items-center justify-end'>
+                                        
+                                        <button
+                                          className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline'
+                                          type='button'
+                                          onClick={buyProduct}
+                                        >
+                                          Submit
+                                        </button>
+                                      </div>
+                                      </div>
+                                    )}
+                                  </form>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Product Location History:{' '}
+                            {productDetails.hubLocations.length > 0
+                              ? productDetails.hubLocations.join('---->') +
+                                '--->'
+                              : 'Seller is packaging order'} */}
+                        </p>
+                        {/* <p>
+                            Qr Code(will be scanned by the delivery personnel):
+                          </p>
+                          <br />
+                          <QRCode value={productDetails[0]} /> */}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             {isUserRetailer === true && (
               <div>
                 <button
@@ -754,20 +1143,32 @@ function Home() {
                               : 'Unknown'}
                           </p>
                           <p>Quantity: {orderDetails[1].quantity}</p>
+                          <p>Price : {orderDetails[1].price}</p>
 
                           <p>
                             {orderDetails[1].state === '2' && (
                               <button
                                 onClick={() => {
                                   // setViewPlaceOrder(true);
-                                  openModal();
+                                  recieveProduct(orderDetails[0]);
                                 }}
                                 className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mb-3'
                               >
-                                Place Order
+                                Recieve Product
                               </button>
                             )}
-                            {viewPlaceOrder === true && (
+                            {orderDetails[1].state === '3' && (
+                              <button
+                                onClick={() => {
+                                  // setViewPlaceOrder(true);
+                                  openModal2();
+                                }}
+                                className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mb-3'
+                              >
+                                List Product
+                              </button>
+                            )}
+                            {viewListOrder === true && (
                               <div className='fixed inset-0 flex items-center justify-center'>
                                 <div className='modal-overlay fixed inset-0 bg-gray-900 opacity-50'></div>
 
@@ -775,10 +1176,10 @@ function Home() {
                                   <div className='modal-content py-4 text-left px-6'>
                                     <div className='flex justify-between items-center pb-3'>
                                       <p className='text-2xl font-bold'>
-                                        Order Form
+                                        List Form
                                       </p>
                                       <button
-                                        onClick={closeModal}
+                                        onClick={closeModal2}
                                         className='modal-close cursor-pointer z-50'
                                       >
                                         <svg
@@ -799,56 +1200,26 @@ function Home() {
                                           className='block text-gray-700 text-sm font-bold mb-2'
                                           htmlFor='name'
                                         >
-                                          Enter Quantity
+                                          Enter Price
                                         </label>
                                         <input
                                           className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
                                           id='quantity'
                                           type='number'
-                                          placeholder='Enter the Quantity'
+                                          placeholder='Enter the Price to List the Product'
                                           value={quantitySet}
-                                          onChange={newhandleQuantityChange}
-                                          max={productDetails[1].quantity}
-                                          min={0}
+                                          onChange={newhandlePriceChange}
                                         />
                                       </div>
-
-                                      <div className='mb-6'>
-                                        <label className='block text-gray-700 text-sm font-bold mb-2'>
-                                          Price
-                                        </label>
-                                        <input
-                                          className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
-                                          id='price'
-                                          type='text'
-                                          placeholder={`Price will change with input`}
-                                          readOnly
-                                          value={pricePlaceholder}
-                                        />
+                                      <div className='flex items-center justify-end'>
+                                        <button
+                                          className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline'
+                                          type='button'
+                                          onClick={listOrder}
+                                        >
+                                          Submit
+                                        </button>
                                       </div>
-
-                                      {isethSent === false && (
-                                        <div className='flex items-center justify-end'>
-                                          <button
-                                            className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline'
-                                            type='button'
-                                            onClick={payFromRetailer}
-                                          >
-                                            Send Eth
-                                          </button>
-                                        </div>
-                                      )}
-                                      {isethSent === true && (
-                                        <div className='flex items-center justify-end'>
-                                          <button
-                                            className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline'
-                                            type='button'
-                                            onClick={PlaceOrder}
-                                          >
-                                            Submit
-                                          </button>
-                                        </div>
-                                      )}
                                     </form>
                                   </div>
                                 </div>
@@ -1163,6 +1534,10 @@ function Home() {
 
                             <p>Description: {orderDetails[1].description}</p>
                             <p>
+                              Container Merkle Root:{' '}
+                              {orderDetails[1].containerHash}
+                            </p>
+                            <p>
                               Product Status:{' '}
                               {orderDetails[1].state === '0'
                                 ? 'Under Production'
@@ -1181,15 +1556,23 @@ function Home() {
                             <p>Quantity: {orderDetails[1].quantity}</p>
 
                             <p>
-                              {orderDetails[1].state === '1' && (
-                                <button
-                                  onClick={() => {
-                                    // setViewPlaceOrder(true);
-                                    sendOrder(orderDetails[0]);
-                                  }}
-                                  className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mb-3'
-                                >
-                                  Send Order
+                              {orderDetails[1].state === '1' &&
+                                orderDetails[1].containerHash ===
+                                  '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+                                  <button
+                                    onClick={() => {
+                                      // setViewPlaceOrder(true);
+                                      sendOrder(orderDetails[0]);
+                                    }}
+                                    className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mb-3'
+                                  >
+                                    Send Order
+                                  </button>
+                                )}
+                              {orderDetails[1].containerHash !==
+                                '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+                                <button className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mb-3'>
+                                  Order Placed
                                 </button>
                               )}
 
