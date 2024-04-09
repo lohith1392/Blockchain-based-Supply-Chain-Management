@@ -12,6 +12,7 @@ contract ManufacturingTraceability {
         Produced,
         AddToContainer,
         RetailerProcessing,
+        ProductBought,
         InTransit,
         Delivered
     }
@@ -101,7 +102,7 @@ contract ManufacturingTraceability {
     mapping(bytes32 =>mapping( address=> RetailerProduct) ) public retailerProductNew;
     mapping(bytes32 => bytes32[]) public prodToRetailers;
     mapping(bytes32=>bytes32[]) public containers;
-
+    mapping(address=>bytes32[]) public retailerPackages;
     mapping(address => bytes32[]) public userProducts;
     mapping(bytes32 => UserProduct) public userProductCart;
 
@@ -298,7 +299,6 @@ contract ManufacturingTraceability {
     function buyProduct(bytes32 _retailerproducthash,address _enduser,string memory _shippingAddress,uint _units) external {
         // retailerProducts[_retailerproducthash].state=MedProductState.InTransit;
         retailerProducts[_retailerproducthash].enduser=_enduser;
-        retailerProducts[_retailerproducthash].shippingAddress=_shippingAddress;
         retailerProducts[_retailerproducthash].quantity=retailerProducts[_retailerproducthash].quantity-_units;
         bytes32 packagehash = keccak256(
                 abi.encodePacked(
@@ -320,22 +320,21 @@ contract ManufacturingTraceability {
             enduser:_enduser,
             shippingAddress:_shippingAddress,
             description:retailerProducts[_retailerproducthash].description,
-            state:MedProductState.RetailerProcessing,
+            state:MedProductState.ProductBought,
             sno:_units,
             price:retailerProducts[_retailerproducthash].price,
             packageHash:packagehash,
             containerHash:retailerProducts[_retailerproducthash].containerHash
         });
         userProducts[_enduser].push(packagehash);
+        retailerPackages[retailerProducts[_retailerproducthash].retailer].push(packagehash);
         emit ProductBought(_retailerproducthash);
     }
-    function retailerShipProduct(bytes32 _retailerproducthash,bytes32 _producthash) external {
-        retailerProducts[_retailerproducthash].state=MedProductState.InTransit;
+    function retailerShipProduct(bytes32 _producthash) external {
         userProductCart[_producthash].state=MedProductState.InTransit;
     }
 
     function retailerDeliverProduct(bytes32 _retailerproducthash,bytes32 _packagehash) external {
-        retailerProducts[_retailerproducthash].state=MedProductState.Delivered;
         userProductCart[_packagehash].state=MedProductState.Delivered;
         emit ProductDelivered(_retailerproducthash);
     }
@@ -346,6 +345,9 @@ contract ManufacturingTraceability {
 
     function getUserProductByHash(bytes32 _packagehash) external view returns(UserProduct memory){
         return userProductCart[_packagehash];
+    }
+    function getRetailerPackages(address _retailer) external view returns(bytes32[] memory){
+        return retailerPackages[_retailer];
     }
 
 
