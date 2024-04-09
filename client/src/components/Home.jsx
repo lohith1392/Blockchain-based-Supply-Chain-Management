@@ -26,6 +26,7 @@ function Home() {
   const [curIndex, setCurIndex] = useState(null);
   const [viewPlaceOrder, setViewPlaceOrder] = useState(null);
   const [viewListOrder, setViewListOrder] = useState(null);
+  const [viewListOrderConfirm, setViewListOrderConfirm] = useState(null);
   const [viewDeliverOrder, setViewDeliverOrder] = useState(null);
   const [productName, setProductName] = useState('');
 
@@ -473,12 +474,15 @@ function Home() {
         window.alert('Wrong User Account Address');
       }
       const retailproduct = await contract.methods
-        .getUserProductByHash(retailerOrderDetails[0].packageHash)
+        .getUserProductByHash(retailerOrderDetails[1].packageHash)
         .call();
       console.log('THis is Product:');
       console.log(retailproduct);
-      const prodDetails = [retailerOrderDetails[0].packageHash, retailproduct];
+      const prodDetails = [retailerOrderDetails[1].packageHash, retailproduct];
 
+      console.log("Retailer Order Details: ")
+      console.log(prodDetails)
+      closeModal3();
       setRetailerOrderDetails(prodDetails);
 
       // getAllOrdersRetailer();
@@ -574,8 +578,12 @@ function Home() {
     setRetailerOrderNames(retailerorders);
   };
 
-  const recieveProduct = async (hash) => {
+  const recieveProduct = async () => {
+    var hash=orderDetails[0];
     try {
+      if(orderDetails[1].containerHash!==document.getElementById('containerHashConfirm').value){
+        alert("Wrong Container Hash")
+      }
       const productHashes = await contract.methods
         .recieveOrder(hash)
         .send({ from: accounts[0] });
@@ -586,7 +594,7 @@ function Home() {
       console.log('THis is Product:');
       console.log(retailproduct);
       const prodDetails = [hash, retailproduct];
-
+      setViewListOrderConfirm(false);
       setOrderDetails(prodDetails);
       console.log(prodDetails);
       // const product = await contract.methods.getProductByHash(hash).call();
@@ -1117,6 +1125,7 @@ function Home() {
                   onClick={() => {
                     setViewOrderProducts(false);
                     getAllOrdersRetailer();
+                    setOrderDetails(null)
                   }}
                 >
                   Manage Your Products
@@ -1127,6 +1136,7 @@ function Home() {
                     setViewOrderProducts(null);
 
                     getAllUserOrdersRetailer();
+                    setOrderDetails(null);
                   }}
                 >
                   Manage Orders Placed
@@ -1401,7 +1411,8 @@ function Home() {
                               <button
                                 onClick={() => {
                                   // setViewPlaceOrder(true);
-                                  recieveProduct(orderDetails[0]);
+                                  
+                                  setViewListOrderConfirm(true);
                                 }}
                                 className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mb-3'
                               >
@@ -1458,7 +1469,7 @@ function Home() {
                                           className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
                                           id='quantity'
                                           type='number'
-                                          placeholder='Enter the Account Address'
+                                          placeholder='Enter the Listing Price'
                                           value={quantitySet}
                                           onChange={newhandlePriceChange}
                                         />
@@ -1468,6 +1479,61 @@ function Home() {
                                           className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline'
                                           type='button'
                                           onClick={listOrder}
+                                        >
+                                          Submit
+                                        </button>
+                                      </div>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {viewListOrderConfirm === true && (
+                              <div className='fixed inset-0 flex items-center justify-center'>
+                                <div className='modal-overlay fixed inset-0 bg-gray-900 opacity-50'></div>
+
+                                <div className='modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto'>
+                                  <div className='modal-content py-4 text-left px-6'>
+                                    <div className='flex justify-between items-center pb-3'>
+                                      <p className='text-2xl font-bold'>
+                                        Order Delivery Confirmation Form
+                                      </p>
+                                      <button
+                                        onClick={closeModal2}
+                                        className='modal-close cursor-pointer z-50'
+                                      >
+                                        <svg
+                                          className='fill-current text-black'
+                                          xmlns='http://www.w3.org/2000/svg'
+                                          width='18'
+                                          height='18'
+                                          viewBox='0 0 18 18'
+                                        >
+                                          <path d='M16.22 15.78a2 2 0 0 1-2.82 0L9 11.83l-4.4 4.4a2 2 0 0 1-2.82-2.82l4.4-4.4-4.4-4.4a2 2 0 1 1 2.82-2.82l4.4 4.4 4.4-4.4a2 2 0 1 1 2.82 2.82l-4.4 4.4 4.4 4.4a2 2 0 0 1 0 2.82z' />
+                                        </svg>
+                                      </button>
+                                    </div>
+
+                                    <form className='mb-6'>
+                                      <div className='mb-4'>
+                                        <label
+                                          className='block text-gray-700 text-sm font-bold mb-2'
+                                          htmlFor='name'
+                                        >
+                                          Enter Container Hash
+                                        </label>
+                                        <input
+                                          className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
+                                          id='containerHashConfirm'
+                                          type='text'
+                                          placeholder='Enter the container hash'
+                                        />
+                                      </div>
+                                      <div className='flex items-center justify-end'>
+                                        <button
+                                          className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline'
+                                          type='button'
+                                          onClick={recieveProduct}
                                         >
                                           Submit
                                         </button>
