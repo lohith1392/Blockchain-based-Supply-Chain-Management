@@ -174,6 +174,7 @@ function Home() {
         .send({ from: accounts[0] });
       setIsUserRegistered(true);
       loginUser();
+      window.alert(user_type+ ' Registered Successfully');
     } catch (error) {
       console.error('Error fetching product:', error);
     }
@@ -213,6 +214,7 @@ function Home() {
       setViewAllProducts(true);
       trackProducts();
       setActiveDiv('addprod2');
+      window.alert('Product Created Successfully');
 
       // Maybe reset the state variables or handle UI updates
     } catch (error) {
@@ -327,6 +329,7 @@ function Home() {
       console.log('This is new product details: ');
       console.log(prodDetails);
       setProductDetails(prodDetails);
+      window.alert('Product Produced Successfully');
     } catch (error) {
       console.error('Error Producing product:', error);
     }
@@ -419,6 +422,7 @@ function Home() {
 
       getAllOrdersRetailer();
       setViewOrderProducts(false);
+      window.alert('Order Placed Successfully');
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -435,6 +439,7 @@ function Home() {
       setIsEthSent(false);
       setPackageDetails(null);
       closeModal();
+      window.alert('Order Bought Successfully');
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -449,6 +454,7 @@ function Home() {
       checkRetailerOrderStatusDirect(orderDetails[0], 0);
       setViewOrderProducts(false);
       closeModal2();
+      window.alert('Order Listed Successfully');
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -480,10 +486,12 @@ function Home() {
       console.log(retailproduct);
       const prodDetails = [retailerOrderDetails[1].packageHash, retailproduct];
 
-      console.log("Retailer Order Details: ")
-      console.log(prodDetails)
+      console.log('Retailer Order Details: ');
+      console.log(prodDetails);
       closeModal3();
       setRetailerOrderDetails(prodDetails);
+
+      window.alert('Order Delivered Successfully');
 
       // getAllOrdersRetailer();
       // setViewOrderProducts(false);
@@ -579,10 +587,13 @@ function Home() {
   };
 
   const recieveProduct = async () => {
-    var hash=orderDetails[0];
+    var hash = orderDetails[0];
     try {
-      if(orderDetails[1].containerHash!==document.getElementById('containerHashConfirm').value){
-        alert("Wrong Container Hash")
+      if (
+        orderDetails[1].containerHash !==
+        document.getElementById('containerHashConfirm').value
+      ) {
+        alert('Wrong Container Hash');
       }
       const productHashes = await contract.methods
         .recieveOrder(hash)
@@ -597,6 +608,7 @@ function Home() {
       setViewListOrderConfirm(false);
       setOrderDetails(prodDetails);
       console.log(prodDetails);
+      window.alert('Order Recieved Successfully');
       // const product = await contract.methods.getProductByHash(hash).call();
       // console.log('THis is Product:');
       // console.log(product);
@@ -706,6 +718,7 @@ function Home() {
 
       setOrderDetails(prodDetails);
       console.log(prodDetails);
+      window.alert('Order Sent Successfully');
     } catch (error) {
       console.error('Error Sending product:', error);
     }
@@ -1028,6 +1041,7 @@ function Home() {
                           ))}
                         </div>
                       )}
+
                       {orderPackageNames.length === 0 && (
                         <p>
                           <br></br>You didn't place orders yet
@@ -1125,7 +1139,7 @@ function Home() {
                   onClick={() => {
                     setViewOrderProducts(false);
                     getAllOrdersRetailer();
-                    setOrderDetails(null)
+                    setOrderDetails(null);
                   }}
                 >
                   Manage Your Products
@@ -1411,7 +1425,7 @@ function Home() {
                               <button
                                 onClick={() => {
                                   // setViewPlaceOrder(true);
-                                  
+
                                   setViewListOrderConfirm(true);
                                 }}
                                 className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mb-3'
@@ -2008,6 +2022,13 @@ function Home() {
                               {product.name}
                             </button>
                           ))}
+                          {orderNames.length === 0 && (
+                            <div>
+                              <p>
+                                <br></br>You didn't get any orders yet
+                              </p>
+                            </div>
+                          )}
                         </div>
                         <br></br>
                         {/* {product && (
@@ -2074,6 +2095,14 @@ function Home() {
                               <p>
                                 Quantity Remaining With Retailer:{' '}
                                 {orderDetails[1].quantity} units
+                              </p>
+                            )}
+                            {orderDetails[1].containerHash !==
+                              '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+                              <p>
+                                Container Merkle Root QR:
+                                <br></br>
+                                <QRCode value={orderDetails[1].containerHash} />
                               </p>
                             )}
 
