@@ -138,6 +138,7 @@ function Home() {
           setViewOrderProducts('');
           setIsUserUser(true);
           setIsUserManufacturer(false);
+          setIsEthSent(false);
           // setProductDetails(null);
           setIsUserRetailer(false);
         } else if (isUserRegistered === 'Retailer') {
@@ -149,6 +150,7 @@ function Home() {
           setViewOrderProducts('');
           setOrderNames([]);
           setOrderDetails(null);
+          setIsEthSent(false);
         } else {
           console.log('This is Manufacturer');
           setIsUserUser(false);
@@ -161,6 +163,7 @@ function Home() {
           setOrderNames([]);
           setOrderDetails(null);
           setViewProducerOrders(false);
+          setIsEthSent(false);
         }
       }
     } catch (error) {
@@ -734,25 +737,25 @@ function Home() {
   return (
     <div className='min-h-screen flex flex-col'>
       {/* Header */}
-      <header className='bg-blue-500 p-4 flex justify-between items-center'>
+      <header className="bg-gradient-to-r from-purple-600 to-indigo-800 py-6 px-8 flex justify-between items-center shadow-lg">
         {/* Company Logo */}
         <img
-          src='https://i5.walmartimages.com/dfw/63fd9f59-b3e1/7a569e53-f29a-4c3d-bfaf-6f7a158bfadd/v1/walmartLogo.svg'
-          alt='Walmart Logo'
-          className='h-10'
-          style={{ maxWidth: '150px' }}
+          src="https://i5.walmartimages.com/dfw/63fd9f59-b3e1/7a569e53-f29a-4c3d-bfaf-6f7a158bfadd/v1/walmartLogo.svg"
+          alt="Walmart Logo"
+          className="h-12 animate-pulse"
+          style={{ maxWidth: '180px' }}
         />
 
         {/* Right-side Buttons */}
-        <div className='flex space-x-4'>
+        <div className="flex space-x-4">
           <button
-            className='bg-white text-blue-500 px-4 py-2 rounded'
-            id='Log_in_Button'
+            className="bg-white text-purple-700 px-6 py-3 rounded-lg shadow-md hover:bg-purple-100 transition-colors duration-300"
+            id="Log_in_Button"
             onClick={loginUser}
           >
             Login
           </button>
-          <button className='bg-white text-blue-500 px-4 py-2 rounded'>
+          <button className="bg-white text-purple-700 px-6 py-3 rounded-lg shadow-md hover:bg-purple-100 transition-colors duration-300">
             About Us
           </button>
         </div>
@@ -760,45 +763,56 @@ function Home() {
 
       {/* Main Content */}
       {buttonClicked === false && (
-        <main className='flex-grow flex items-center justify-center mt-72'>
-          <h1 className='text-6xl font-bold text-blue-500'>
-            Implementing Package Traceability in Healthcare Supply Chain using
-            Blockchain
+        <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-800">
+          <h1 className="text-6xl font-bold text-white animate-bounce mb-8">
+            Implementing Package Traceability in Healthcare Supply Chain using Blockchain
           </h1>
+          <div className="mt-8 animate-pulse">
+            <button className="bg-pink-500 text-white px-8 py-4 rounded-lg shadow-lg hover:bg-pink-600 transition-colors duration-300 mr-4">
+              Get Started
+            </button>
+            <button className="bg-yellow-400 text-gray-800 px-8 py-4 rounded-lg shadow-lg hover:bg-yellow-500 transition-colors duration-300">
+              Learn More
+            </button>
+          </div>
         </main>
       )}
-      <div className='flex flex-col items-center justify-start h-screen space-y-6 p-4 mt-12'>
+      <div className="min-h-screen flex flex-col bg-gradient-to-r from-purple-600 to-indigo-800">
         {isUserRegistered === false && (
-          <div className='not-registered-div'>
-            <h1>Looks Like you aren't registered . </h1>
-            <br></br>
-            <button
-              className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
-              onClick={() => registerUser('Producer')}
-            >
-              Register as Manufacturer
-            </button>
-            <button
-              className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
-              onClick={() => registerUser('Retailer')}
-            >
-              Register as Retailer
-            </button>
-            <button
-              className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
-              onClick={() => registerUser('User')}
-            >
-              Register as User
-            </button>
+          <div className="flex flex-col items-start justify-start px-8 py-12">
+            <h1 className="text-4xl font-bold text-white mb-8">
+              Looks Like you aren't registered.
+            </h1>
+            <div className="flex space-x-4">
+              <button
+                className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors duration-300 shadow-md"
+                onClick={() => registerUser('Producer')}
+              >
+                Register as Manufacturer
+              </button>
+              <button
+                className="bg-yellow-400 text-gray-800 px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors duration-300 shadow-md"
+                onClick={() => registerUser('Retailer')}
+              >
+                Register as Retailer
+              </button>
+              <button
+                className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors duration-300 shadow-md"
+                onClick={() => registerUser('User')}
+              >
+                Register as User
+              </button>
+            </div>
           </div>
         )}
 
         {isUserRegistered === true && (
-          <div>
+          <div className="min-h-screen bg-gradient-to-r from-purple-600 to-indigo-800 p-8">
             {isUserUser === true && (
               <div>
+                <div className="flex space-x-4 mb-8">
                 <button
-                  className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
+                  className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors duration-300 shadow-md"
                   onClick={() => {
                     setViewOrderProducts(true);
                     setViewContainers(false);
@@ -810,7 +824,7 @@ function Home() {
                 </button>
 
                 <button
-                  className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
+                  className="bg-yellow-400 text-gray-800 px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors duration-300 shadow-md"
                   onClick={() => {
                     setViewOrderProducts(false);
                     setPackageDetails(null);
@@ -820,21 +834,22 @@ function Home() {
                   View Orders
                 </button>
                 <button
-                  className='bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600'
+                  className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors duration-300 shadow-md"
                   onClick={() => {
                     setViewOrderProducts(null);
                   }}
                 >
                   View Profile
                 </button>
-                <br></br>
-                <br></br>
+              </div>
                 {viewOrderProducts === true && (
-                  <div id='anotherDiv' className='border mt-4 p-4'>
-                    <div className='input-group flex items-center w-full sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-1/3 mb-4 space-x-4'>
-                      <div className='input-group flex flex-col space-y-2 items-start'></div>
-                    </div>
-                    <h1>All Products</h1>
+                  <div
+                      id="anotherDiv"
+                      className="bg-white rounded-lg shadow-lg p-8 animate-fade-in"
+                    >
+                    <h1 className="text-3xl font-bold text-purple-700 mb-6">
+                      All Products
+                    </h1>
                     <hr />
                     <div>
                       {packageNames.map((product, index) => (
@@ -844,7 +859,7 @@ function Home() {
                           onClick={() =>
                             checkPackagetStatusDirect(product.hash, index)
                           }
-                          className='w-full bg-violet-500 hover:bg-violet-600 active:bg-violet-700 focus:outline-none focus:ring focus:ring-violet-300 p-2 rounded mt-6'
+                          className="w-full bg-violet-500 hover:bg-violet-600 active:bg-violet-700 focus:outline-none focus:ring focus:ring-violet-300 p-2 rounded mt-6 text-white transition-colors duration-300 shadow-md"
                         >
                           {product.name}
                         </button>
@@ -852,48 +867,30 @@ function Home() {
                     </div>
                     <br></br>
 
-                    {/* {product && (
-                  <div className='mt-4'>
-                    <p>Name: {product.name}</p>
-                    <p>Owner: {product.owner}</p>
-                    <p>Shipping Address: {product.shippingAddress}</p>
-                    <p>Description: {product.description}</p>
-                    <p>
-                      Product Status:{' '}
-                      {product.state === '0'
-                        ? 'In Process'
-                        : product.state === '1'
-                        ? 'On the Way'
-                        : product.state === '2'
-                        ? 'Delivered'
-                        : 'Unknown'}
-                    </p>
-                  </div>
-                )} */}
+          
 
                     {packageDetails && (
                       <div className='mt-4'>
-                        <p>Name: {packageDetails[1].name}</p>
-                        <p>Producer: {packageDetails[1].producer}</p>
+                        <p className="text-lg font-semibold text-gray-700">Name: {packageDetails[1].name}</p>
+                        <p className="text-lg font-semibold text-gray-700">Producer: {packageDetails[1].producer}</p>
                         {packageDetails[1].retailer !==
                           '0x0000000000000000000000000000000000000000' && (
-                          <p>Retailer:{packageDetails[1].retailer}</p>
+                          <p className="text-lg font-semibold text-gray-700">Retailer:{packageDetails[1].retailer}</p>
                         )}
 
-                        <p>Description: {packageDetails[1].description}</p>
-                        <p>
+                        <p className="text-lg font-semibold text-gray-700">Description: {packageDetails[1].description}</p>
+                        <div className="mt-4">
                           {orderRetailers.map((product, index) => (
                             <button
                               key={index}
                               id={product[0].name}
                               onClick={() =>
-                                // checkPackagetStatusDirect(product[0].hash, index)
                                 {
                                   setViewPlaceOrder(true);
                                   setOrderRetailer(product);
                                 }
                               }
-                              className='w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mt-6'
+                              className="w-full bg-green-500 hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring focus:ring-green-300 p-2 rounded mt-6 text-white transition-colors duration-300 shadow-md"
                             >
                               Retailer: {product[0].retailer}
                               <br></br> Price:₹ {product[0].price} per unit/-{' '}
@@ -1002,27 +999,19 @@ function Home() {
                             </div>
                           )}
 
-                          {/* Product Location History:{' '}
-                            {productDetails.hubLocations.length > 0
-                              ? productDetails.hubLocations.join('---->') +
-                                '--->'
-                              : 'Seller is packaging order'} */}
-                        </p>
-                        {/* <p>
-                            Qr Code(will be scanned by the delivery personnel):
-                          </p>
-                          <br />
-                          <QRCode value={productDetails[0]} /> */}
+                        </div>
                       </div>
                     )}
                   </div>
                 )}
                 {viewOrderProducts === false && (
-                  <div id='anotherDiv' className='border mt-4 p-4'>
-                    <div className='input-group flex items-center w-full sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-1/3 mb-4 space-x-4'>
-                      <div className='input-group flex flex-col space-y-2 items-start'></div>
-                    </div>
-                    <h1>All Orders Placed</h1>
+                  <div
+                      id="anotherDiv"
+                      className="bg-white rounded-lg shadow-lg p-8 animate-fade-in"
+                    >
+                    <h1 className="text-3xl font-bold text-purple-700 mb-6">
+                      All Orders Placed
+                    </h1>
                     <hr />
                     <div>
                       {orderPackageNames.length !== 0 && (
@@ -1034,7 +1023,7 @@ function Home() {
                               onClick={() =>
                                 checkOrderStatus(product[1], index)
                               }
-                              className='w-full bg-violet-500 hover:bg-violet-600 active:bg-violet-700 focus:outline-none focus:ring focus:ring-violet-300 p-2 rounded mt-6'
+                              className="w-full bg-violet-500 hover:bg-violet-600 active:bg-violet-700 focus:outline-none focus:ring focus:ring-violet-300 p-2 rounded mt-6 text-white transition-colors duration-300 shadow-md"
                             >
                               {product[0].name}
                             </button>
@@ -1043,49 +1032,30 @@ function Home() {
                       )}
 
                       {orderPackageNames.length === 0 && (
-                        <p>
+                        <p className="text-lg font-semibold text-gray-700">
                           <br></br>You didn't place orders yet
                         </p>
                       )}
                     </div>
                     <br></br>
 
-                    {/* {product && (
-                  <div className='mt-4'>
-                    <p>Name: {product.name}</p>
-                    <p>Owner: {product.owner}</p>
-                    <p>Shipping Address: {product.shippingAddress}</p>
-                    <p>Description: {product.description}</p>
-                    <p>
-                      Product Status:{' '}
-                      {product.state === '0'
-                        ? 'In Process'
-                        : product.state === '1'
-                        ? 'On the Way'
-                        : product.state === '2'
-                        ? 'Delivered'
-                        : 'Unknown'}
-                    </p>
-                  </div>
-                )} */}
-
                     {packageDetails && (
                       <div className='mt-4'>
-                        <p>Name: {packageDetails[1].name}</p>
-                        <p>Description: {packageDetails[1].description}</p>
-                        <p>Quantity: {packageDetails[1].sno}</p>
-                        <p>Price: {packageDetails[1].price} </p>
-                        <p>
+                        <p className="text-lg font-semibold text-gray-700">Name: {packageDetails[1].name}</p>
+                        <p className="text-lg font-semibold text-gray-700">Description: {packageDetails[1].description}</p>
+                        <p className="text-lg font-semibold text-gray-700">Quantity: {packageDetails[1].sno}</p>
+                        <p className="text-lg font-semibold text-gray-700">Price: {packageDetails[1].price} </p>
+                        <p className="text-lg font-semibold text-gray-700">
                           Shipping Address: {packageDetails[1].shippingAddress}
                         </p>
-                        <p>Producer: {packageDetails[1].producer}</p>
+                        <p className="text-lg font-semibold text-gray-700">Producer: {packageDetails[1].producer}</p>
                         {packageDetails[1].retailer !==
                           '0x0000000000000000000000000000000000000000' && (
-                          <p>Retailer: {packageDetails[1].retailer}</p>
+                          <p className="text-lg font-semibold text-gray-700">Retailer: {packageDetails[1].retailer}</p>
                         )}
 
-                        <p>Container Hash: {packageDetails[1].containerHash}</p>
-                        <p>
+                        <p className="text-lg font-semibold text-gray-700">Container Hash: {packageDetails[1].containerHash}</p>
+                        <p className="text-lg font-semibold text-gray-700">
                           Product Status:{' '}
                           {packageDetails[1].state === '0'
                             ? 'Under Production'
@@ -1103,20 +1073,35 @@ function Home() {
                             ? 'Package Delivered'
                             : 'Unknown'}
                         </p>
-
-                        {/* <p>
-                            Qr Code(will be scanned by the delivery personnel):
-                          </p>
-                          <br />
-                          <QRCode value={productDetails[0]} /> */}
                       </div>
                     )}
                   </div>
                 )}
                 {viewOrderProducts === null && (
-                  <div id='anotherDiv' className='border mt-4 p-4'>
-                    <h1>Your QR</h1>
-                    <QRCode value={accounts[0]}></QRCode>
+                  <div
+                      id="anotherDiv"
+                      className="bg-white rounded-lg shadow-lg p-8 animate-fade-in"
+                    >
+                    <h1 className="text-3xl font-bold text-purple-700 mb-6">Your QR</h1>
+                    <div className="flex justify-center">
+                    <QRCode
+                      value={accounts[0]}
+                      size={256}
+                      bgColor="#ffffff"
+                      fgColor="#4c51bf"
+                      level="Q"
+                      includeMargin={true}
+                      renderAs="svg"
+                      imageSettings={{
+                        src: "https://i5.walmartimages.com/dfw/63fd9f59-b3e1/7a569e53-f29a-4c3d-bfaf-6f7a158bfadd/v1/walmartLogo.svg",
+                        x: null,
+                        y: null,
+                        height: 64,
+                        width: 64,
+                        excavate: true,
+                      }}
+                    />
+                    </div>
                   </div>
                 )}
               </div>
